@@ -1,24 +1,31 @@
 ;; SIP-010 Trait Definition for Fungible Tokens
-;; File: contracts/ft-trait.clar
+;; File name: contracts/token-trait.clar
 
+;; Define the official SIP-010 trait
 (define-trait ft-trait
   (
-    ;; Transfer from the caller to a new principal
+    ;; Transfer from caller to a principal
     (transfer (principal uint) (response bool uint))
-
-    ;; Get the token balance of the specified principal
+    
+    ;; Transfer from specified principal to another principal
+    (transfer-memo (principal uint (buff 34)) (response bool uint))
+    
+    ;; Get balance for a token holder
     (get-balance (principal) (response uint uint))
-
-    ;; Get the total number of tokens that exist
+    
+    ;; Get token supply
     (get-total-supply () (response uint uint))
-
-    ;; Get human-readable name of the token
-    (get-name () (string-ascii 32))
-
-    ;; Get the symbol/ticker of the token
-    (get-symbol () (string-ascii 32))
-
-    ;; Get the precision used in the token amounts
-    (get-decimals () uint)
+    
+    ;; Get token decimals
+    (get-decimals () (response uint uint))
+    
+    ;; Get token name
+    (get-name () (response (string-ascii 32) uint))
+    
+    ;; Get token symbol
+    (get-symbol () (response (string-ascii 32) uint))
+    
+    ;; Get token URI
+    (get-token-uri () (response (optional (string-utf8 256)) uint))
   )
 )

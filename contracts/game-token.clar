@@ -1,64 +1,65 @@
 ;; Deolax Token - SIP-010 Fungible Token for Mining Reward RPG
 ;; Players earn $DEOLAX through gameplay and can spend it in-game or withdraw it
-;; File: contracts/game-token.clar
+;; File name: contracts/game-token.clar
 
-;; Import the trait
-(use-trait ft-trait .ft-trait.ft-trait)
+;; Import the trait first
+(use-trait ft-token-trait .token-trait.ft-trait)
 
 ;; Define contract owner
 (define-constant contract-owner tx-sender)
 
-;; Implement the trait
-(impl-trait .ft-trait.ft-trait)
-
 ;; Error Codes
 (define-constant ERR_NOT_AUTHORIZED (err u401))
 (define-constant ERR_INSUFFICIENT_BALANCE (err u402))
+(define-constant ERR_NOT_TOKEN_OWNER (err u403))
 
 ;; Token Metadata
 (define-constant token-name "Deolax")
 (define-constant token-symbol "DEOLAX")
 (define-constant token-decimals u6)
+(define-constant token-uri u"https://deolax.game/token-metadata.json")
 
 ;; Token Ledger
 (define-data-var total-supply uint u0)
 (define-map balances { account: principal } uint)
-(define-map allowances { owner: principal, spender: principal } uint)
 
-;; Metadata Getters
-(define-read-only (get-name) token-name)
-(define-read-only (get-symbol) token-symbol)
-(define-read-only (get-decimals) token-decimals)
-(define-read-only (get-total-supply) (ok (var-get total-supply)))
+;; Implementation
+(define-public (transfer (recipient principal) (amount uint))
+  (let ((sender-balance (default-to u0 (map-get? balances { account: tx-sender }))))
+    (if (>= sender-balance amount)
+      (begin
+        (map-set balances { account: tx-sender } (- sender-balance amount))
+        (map-set balances { account: recipient } 
+          (+ (default-to u0 (map-get? balances { account: recipient })) amount))
+        (ok true))
+      (err ERR_INSUFFICIENT_BALANCE))))
 
-;; Balance Lookup
+(define-public (transfer-memo (recipient principal) (amount uint) (memo (buff 34)))
+  (begin
+    (print memo)
+    (transfer recipient amount)))
+
+(define-read-only (get-name)
+  (ok token-name))
+
+(define-read-only (get-symbol)
+  (ok token-symbol))
+
+(define-read-only (get-decimals)
+  (ok token-decimals))
+
 (define-read-only (get-balance (account principal))
   (ok (default-to u0 (map-get? balances { account: account }))))
 
-;; Allowance Lookup
-(define-read-only (get-allowance (owner principal) (spender principal))
-  (ok (default-to u0 (map-get? allowances { owner: owner, spender: spender }))))
+(define-read-only (get-total-supply)
+  (ok (var-get total-supply)))
+
+(define-read-only (get-token-uri)
+  (ok (some token-uri)))
 
 ;; Authorization helper (only contract deployer can mint)
 (define-private (is-authorized (sender principal))
   (is-eq sender contract-owner))
-
-;; Internal transfer logic
-(define-private (internal-transfer (sender principal) (recipient principal) (amount uint))
-  (let (
-    (sender-balance (default-to u0 (map-get? balances { account: sender })))
-    (recipient-balance (default-to u0 (map-get? balances { account: recipient })))
-  )
-    (if (>= sender-balance amount)
-      (begin
-        (map-set balances { account: sender } (- sender-balance amount))
-        (map-set balances { account: recipient } (+ recipient-balance amount))
-        (ok true))
-      ERR_INSUFFICIENT_BALANCE)))
-
-;; Transfer token to another player
-(define-public (transfer (recipient principal) (amount uint))
-  (internal-transfer tx-sender recipient amount))
 
 ;; Mint new Deolax tokens to a user (only contract-owner or mining-engine should call this)
 (define-public (mint (recipient principal) (amount uint))
@@ -68,7 +69,7 @@
         (+ amount (default-to u0 (map-get? balances { account: recipient }))))
       (var-set total-supply (+ amount (var-get total-supply)))
       (ok true))
-    ERR_NOT_AUTHORIZED))
+    (err ERR_NOT_AUTHORIZED)))
 
 ;; Burn tokens from sender's balance (e.g., spending or destruction)
 (define-public (burn (amount uint))
@@ -78,4 +79,4 @@
         (map-set balances { account: tx-sender } (- balance amount))
         (var-set total-supply (- (var-get total-supply) amount))
         (ok true))
-      ERR_INSUFFICIENT_BALANCE)))
+      (err ERR_INSUFFICIENT_BALANCE))))
