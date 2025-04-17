@@ -1,7 +1,11 @@
 ;; Deolax Token - SIP-010 Fungible Token for Mining Reward RPG
 ;; Players earn $DEOLAX through gameplay and can spend it in-game or withdraw it
 
-(impl-trait 'SP3FBR2AGK7Q1N0MNZGH4CP6FJ5B7HZ3N2C7P7CJD.token-trait.token-trait)
+;; Define contract owner
+(define-constant contract-owner tx-sender)
+
+;; Properly formatted trait implementation
+(impl-trait .SP3FBR2AGK7Q1N0MNZGH4CP6FJ5B7HZ3N2C7P7CJD.token-trait.token-trait)
 
 ;; Error Codes
 (define-constant ERR_NOT_AUTHORIZED (err u401))
@@ -33,7 +37,7 @@
 
 ;; Authorization helper (only contract deployer can mint)
 (define-private (is-authorized (sender principal))
-  (is-eq sender (contract-owner)))
+  (is-eq sender contract-owner))
 
 ;; Internal transfer logic
 (define-private (internal-transfer (sender principal) (recipient principal) (amount uint))
